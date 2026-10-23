@@ -35,7 +35,8 @@ export function normalize(input={}){
  if(!['counting','territory','capture','stones'].includes(c.scoring))throw Error('Unknown scoring.');if(!['none','total','increment','overtime'].includes(c.clock))throw Error('Unknown clock.');
  c.human=+c.human===2?2:1;c.coinCount=Math.max(0,Math.min(100,Math.trunc(+c.coinCount)||0));c.handicaps=Array.from({length:c.mode==='rengo'?c.players:sides(c)},(_,i)=>{const h=+c.handicaps?.[i]||0;return h>=2?Math.min(9,Math.trunc(h)):0;});return c;
 }
-export function positionKey(s){return s.board.join(',')+'|'+s.turn+'|'+(s.config.stoical?s.previousCapture:0);}
+// Deterministic 128-bit position fingerprint keeps long 19-cube saves compact.
+export function positionKey(s){let a=2166136261,b=2246822519,c=3266489917,d=668265263;for(const v of s.board){a=Math.imul(a^v,16777619);b=Math.imul(b^(v+1),2246822519);c=Math.imul(c^(v+3),3266489917);d=Math.imul(d^(v+7),668265263);}return [a,b,c,d].map(v=>(v>>>0).toString(16).padStart(8,'0')).join('')+'|'+s.turn+'|'+(s.config.stoical?s.previousCapture:0);}
 export function newGame(config={}){
  const c=normalize(config),order=turnOrder(c),count=sides(c),setup=[];c.handicaps.forEach((h,i)=>{for(let k=0;k<h;k++)setup.push({side:c.mode==='rengo'?i%c.teams+1:i+1,seat:i+1});});
  const s={config:c,board:Array(c.size**3).fill(0),order,turn:0,ply:0,passes:0,captures:Array(count+1).fill(0),previousCapture:0,history:[],seen:[],phase:setup.length?'handicap':'playing',setup,setupAt:0,result:null};

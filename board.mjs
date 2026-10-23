@@ -9,7 +9,7 @@ export class CubeBoard{
    else if(this.moved){if(e.shiftKey||e.buttons===2||this.flat){this.pan[0]+=dx;this.pan[1]+=dy;}else{this.yaw+=dx*.008;this.pitch=Math.max(-1.45,Math.min(1.45,this.pitch+dy*.008));}}
    this.pointers.set(e.pointerId,[e.clientX,e.clientY]);this.draw();
   });
-  canvas.addEventListener('pointerup',e=>{if(!this.moved&&this.pointers.size===1){const r=canvas.getBoundingClientRect(),i=this.hit(e.clientX-r.left,e.clientY-r.top);if(i>=0)this.onSelect(i);}this.pointers.delete(e.pointerId);});
+  canvas.addEventListener('pointerup',e=>{if(e.button===0&&!this.moved&&this.pointers.size===1){const r=canvas.getBoundingClientRect(),i=this.hit(e.clientX-r.left,e.clientY-r.top);if(i>=0)this.onSelect(i);}this.pointers.delete(e.pointerId);});
   canvas.addEventListener('pointercancel',e=>this.pointers.delete(e.pointerId));canvas.addEventListener('pointerleave',()=>{this.hover=-1;this.draw();});
   canvas.addEventListener('wheel',e=>{e.preventDefault();this.zoom=Math.max(.45,Math.min(2.4,this.zoom*Math.exp(-e.deltaY*.001)));this.draw();},{passive:false});
   canvas.addEventListener('keydown',e=>{if(e.key==='+'||e.key==='=')this.zoomBy(1.1);if(e.key==='-')this.zoomBy(.9);if(e.key==='Home')this.reset();});
