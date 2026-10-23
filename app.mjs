@@ -32,7 +32,7 @@ function selectPoint(i){
  if(!allowed()){toast(replay>=0?'Return to the live board to play.':paused?'Resume the clock to play.':aiPaused&&!isHuman()?'Resume the computer to continue.':'Wait for your turn.');return;}
  try{
   if(state.phase==='handicap'){const next=placeHandicap(state,i);if(next.phase==='playing')next.startBoard=next.board.slice();setState(next);return;}
-  const existing=draft.findIndex(p=>p.i===i);if(existing>=0){draft=draft.slice(0,existing);draftState=draft.length?playTurn(state,draft):null;render();return;}
+  const existing=draft.findIndex(p=>p.i===i);if(existing>=0&&board.dragConfirm){setState(playTurn(state,draft));return;}if(existing>=0){draft=draft.slice(0,existing);draftState=draft.length?playTurn(state,draft):null;render();return;}
   const p={i,kind:piece,...(piece==='tier'?{tier}: {})},candidate=[...draft,p],next=playTurn(state,candidate);draft=candidate;draftState=next;
   const pxyz=xyz(i,state.config.size);['coordX','coordY','coordZ'].forEach((id,k)=>$(id).value=pxyz[k]+1);render();
  }catch(e){toast(e.message,true);}
@@ -58,9 +58,9 @@ function render(){
  $('tierSelect').hidden=piece!=='tier';$('pieceCost').textContent=`${piece==='tier'?tier+1:1} ${piece==='tier'?'uses':'use'}`;
  const descriptions={stone:'A physical stone. Connect to friendly stones to share liberties.',ghost:'A replaceable grey point that grants friendly groups a liberty.',obstacle:'A permanent red blockage. Neither side can capture it.',tier:`Tier ${tier} costs ${tier+1} uses. Supports lower tiers; needs an equal or higher attacker.`,coin:'A neutral, uncapturable coin. Blocks liberties and scores no points.'};$('pieceDescription').textContent=descriptions[piece];
  $('draftList').innerHTML='';if(!draft.length)$('draftList').innerHTML='<span>No stones selected</span><small>The next move is yours.</small>';else draft.forEach((p,k)=>{const row=document.createElement('div');row.className='draft-item';row.innerHTML=`<span>${k+1}. ${coord(p.i,c.size)} · ${p.kind}${p.tier?` ${p.tier}`:''}</span><button aria-label="Remove selection ${k+1}">×</button>`;row.querySelector('button').onclick=()=>{draft=draft.slice(0,k);draftState=draft.length?playTurn(state,draft):null;render();};$('draftList').append(row);});
- $('previewChip').hidden=!draft.length;$('previewChip').textContent=`${draft.length} selected · ${used()} uses · ${(draftState?.captures[side]||0)-s.captures[side]} captures`;
+ $('previewChip').hidden=!draft.length||board.dragConfirm;$('previewChip').textContent=`${draft.length} selected · ${used()} uses · ${(draftState?.captures[side]||0)-s.captures[side]} captures`;
  $('boardTip').textContent=s.phase==='scoring'?'Tap groups to mark dead · Review score to finish':replay>=0?'Replay view · return to Live to continue':board.allLayers?'All points selectable · Drag to orbit · Tap to preview':board.flat?'Tap a point · Drag to pan · Pinch to zoom':'Drag to orbit · Shift-drag to pan · Scroll or pinch to zoom';
- if(replay<0)board.set(activeState(),draft,dead);renderMoves();renderMobile();
+ if(replay<0)board.set(activeState(),draft,dead);renderMoves();renderMobile();renderPlacementControls();
 }
 function renderMoves(){
  $('replayLabel').textContent=replay<0?'Live':`${replay} / ${state.ply}`;const list=$('moveList');list.innerHTML='';if(!state.history.length){list.innerHTML='<li class="muted">Your first move starts the story.</li>';return;}
@@ -84,7 +84,7 @@ function allLayers(value){board.allLayers=value;if(value)board.flat=false;render
 $('zoomIn').onclick=()=>board.zoomBy(1.15);$('zoomOut').onclick=()=>board.zoomBy(.87);$('resetView').onclick=$('cameraReset2').onclick=()=>board.reset();
 $('background').onchange=e=>{board.background=e.target.value;board.draw();saveView();};$('gridOpacity').oninput=e=>{board.opacity=+e.target.value/100;board.draw();saveView();};
 for(const [id,key] of [['fadeLayers','fade'],['freePick','free'],['glow','glow']])$(id).onchange=e=>{board[key]=e.target.checked;board.draw();saveView();};
-function saveView(){storage.put('view',{allLayers:board.allLayers,background:board.background,opacity:board.opacity,fade:board.fade,free:board.free,glow:board.glow}).catch(()=>{});}
+function saveView(){storage.put('view',{dragConfirm:board.dragConfirm,allLayers:board.allLayers,background:board.background,opacity:board.opacity,fade:board.fade,free:board.free,glow:board.glow}).catch(()=>{});}
 function maybeAI(hint=false){
  if(!hint&&state.phase==='handicap'&&state.config.mode==='ai'&&!isHuman()&&!busy&&!paused&&!modalOpen()&&replay<0&&!document.hidden){const n=state.config.size,m=(n-1)/2,points=Array.from({length:n**3},(_,i)=>i).filter(i=>!state.board[i]);points.sort((a,b)=>xyz(a,n).reduce((v,k)=>v+(k-m)**2,0)-xyz(b,n).reduce((v,k)=>v+(k-m)**2,0));if(points.length)setState(placeHandicap(state,points[0]));return;}
  if(busy||paused||aiPaused||modalOpen()||replay>=0||document.hidden||state.phase!=='playing'||(!hint&&(state.config.mode!=='ai'||isHuman())))return;
@@ -127,10 +127,11 @@ function tick(){const now=performance.now(),dt=(now-lastTick)/1000;lastTick=now;
 setInterval(tick,200);document.addEventListener('visibilitychange',()=>{lastTick=performance.now();if(document.hidden){stopAI();const value=snapshot();saveQueue=saveQueue.then(()=>storage.put('autosave-latest',value)).catch(()=>{});}else maybeAI();});
 document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName)||modalOpen())return;if(e.key==='Enter'&&!$('commit').disabled){e.preventDefault();$('commit').click();}if(e.key==='Escape'){resetDraft();render();}});
 setupFields();render();
-(async()=>{try{const view=await storage.get('view');if(view){Object.assign(board,view);$('allLayersToggle').checked=!!view.allLayers;$('background').value=view.background;$('gridOpacity').value=view.opacity*100;$('fadeLayers').checked=view.fade;$('freePick').checked=view.free;$('glow').checked=view.glow;}const latest=await storage.get('autosave-latest');if(latest){restore(latest);toast('Restored your latest automatic checkpoint.');}else remember();}catch{remember();}render();maybeAI();})();
+(async()=>{try{const view=await storage.get('view');if(view){Object.assign(board,view);$('dragConfirmEnabled').checked=board.dragConfirm;$('allLayersToggle').checked=!!view.allLayers;$('background').value=view.background;$('gridOpacity').value=view.opacity*100;$('fadeLayers').checked=view.fade;$('freePick').checked=view.free;$('glow').checked=view.glow;}const latest=await storage.get('autosave-latest');if(latest){restore(latest);toast('Restored your latest automatic checkpoint.');}else remember();}catch{remember();}render();maybeAI();})();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'}).then(async registration=>{await navigator.serviceWorker.ready;$('offlineStatus').innerHTML='<i></i> Ready for offline play';registration.addEventListener('updatefound',()=>{const w=registration.installing;w?.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)toast('An update is ready. Export your game, then reload to update.');});});}).catch(()=>{$('offlineStatus').innerHTML='<i></i> Local play · cache unavailable';});
 
 // Compact touch controls live inside the cube on narrow screens.
+function escapeText(value){return String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');}
 function mobileAction(id,label){const source=$(id);return `<button data-mobile-action="${id}" ${source?.disabled?'disabled':''}>${label}</button>`;}
 function renderMobile(){
  const panel=$('mobilePanel');if(!panel)return;panel.hidden=!mobilePanel;$('mobileCollapse').hidden=!mobilePanel;
@@ -140,11 +141,11 @@ function renderMobile(){
  const control=(name,label,values,selected)=>`<label>${label}<select data-mobile-control="${name}">${options(values,selected)}</select></label>`;
  if(mobilePanel==='play'){
   const pieces=[['stone','Regular · 1 use']];if(c.ghost)pieces.push(['ghost','Ghost · 1 use']);if(c.obstacle)pieces.push(['obstacle','Obstacle · 1 use']);if(c.tier)for(let t=1;t<=3;t++)pieces.push(['tier'+t,`Tier ${t} · ${t+1} uses`]);if(c.coin)pieces.push(['coin','Coin · 1 use']);
-  panel.innerHTML=`<div class="dock-heading"><strong>${$('turnText').textContent}</strong><small>${$('turnBudget').textContent}</small></div>${control('piece','Place a piece',pieces,piece==='tier'?'tier'+tier:piece)}<div class="dock-actions">${mobileAction('commit',state.phase==='scoring'?'Review score':`Place ${draft.length||''} ${draft.length>1?'stones':'stone'}`)}${mobileAction('cancelDraft','Clear')}${mobileAction('passBtn','Pass')}${mobileAction('undoBtn','Undo')}${mobileAction('hintBtn','Hint')}${mobileAction('estimateBtn','Estimate')}</div>`;
+  panel.innerHTML=`<div class="dock-heading"><strong>${escapeText($('turnText').textContent)}</strong><small>${escapeText($('turnBudget').textContent)}</small></div>${control('piece','Place a piece',pieces,piece==='tier'?'tier'+tier:piece)}<div class="dock-actions">${mobileAction('commit',state.phase==='scoring'?'Review score':`Place ${draft.length||''} ${draft.length>1?'stones':'stone'}`)}${mobileAction('cancelDraft','Clear')}${mobileAction('passBtn','Pass')}${mobileAction('undoBtn','Undo')}${mobileAction('hintBtn','Hint')}${mobileAction('estimateBtn','Estimate')}</div>`;
  }else if(mobilePanel==='layers'){
   panel.innerHTML=`${board.allLayers?'<p class="dock-note">All cube points are selectable. Rotate to reach interior points.</p>':`<div class="dock-grid">${control('axis','Slice axis',[[0,'X'],[1,'Y'],[2,'Z']],board.axis)}${control('layer','Layer',Array.from({length:n},(_,i)=>[i,`${i+1} of ${n}`]),board.layer)}</div>`}<div class="dock-actions"><button data-mobile-command="3d" class="${!board.flat&&!board.allLayers?'active':''}">3D slice</button><button data-mobile-command="2d" class="${board.flat?'active':''}">2D layer</button><button data-mobile-command="all" class="${board.allLayers?'active':''}" aria-pressed="${board.allLayers}">All XYZ</button></div>${board.allLayers?'':`<label class="dock-check"><input type="checkbox" data-mobile-control="free" ${board.free?'checked':''}> Select across all layers</label>`}<details><summary>Precise X / Y / Z placement</summary><div class="dock-coords">${['X','Y','Z'].map(a=>`<label>${a}<input id="mobileCoord${a}" aria-label="${a} coordinate" type="number" min="1" max="${n}" value="${$('coord'+a).value}"></label>`).join('')}<button data-mobile-command="coordinate" aria-label="Add precise coordinate">＋</button></div></details>`;
  }else if(mobilePanel==='view'){
-  panel.innerHTML=`${control('gesture','One-finger drag',[[0,'Orbit the cube'],[1,'Pan / move the cube']],board.panMode?1:0)}<div class="dock-actions">${mobileAction('zoomOut','− Zoom')}${mobileAction('zoomIn','＋ Zoom')}${mobileAction('resetView','Reset view')}</div>${control('background','Background',[['#070b12','Black'],['#ffffff','White'],['#f9d9e6','Pink'],['#b5b6be','Grey'],['#46332b','Brown']],board.background)}<label class="dock-check"><input type="checkbox" data-mobile-control="glow" ${board.glow?'checked':''}> Neon glow</label><label class="dock-check"><input type="checkbox" data-mobile-control="fade" ${board.fade?'checked':''}> Fade other layers</label>`;
+  panel.innerHTML=`${control('gesture','One-finger drag',[[0,'Orbit the cube'],[1,'Pan / move the cube']],board.panMode?1:0)}<div class="dock-actions">${mobileAction('zoomOut','− Zoom')}${mobileAction('zoomIn','＋ Zoom')}${mobileAction('resetView','Reset view')}</div>${control('background','Background',[['#070b12','Black'],['#ffffff','White'],['#f9d9e6','Pink'],['#b5b6be','Grey'],['#46332b','Brown']],board.background)}<label class="dock-check"><input type="checkbox" data-mobile-control="dragconfirm" ${board.dragConfirm?'checked':''}> Drag, drop &amp; tap to confirm</label><label class="dock-check"><input type="checkbox" data-mobile-control="glow" ${board.glow?'checked':''}> Neon glow</label><label class="dock-check"><input type="checkbox" data-mobile-control="fade" ${board.fade?'checked':''}> Fade other layers</label>`;
  }else{
   panel.innerHTML=`<div class="dock-actions">${mobileAction('savesBtn','Save / load')}${mobileAction('newBtn','New game')}${mobileAction('helpBtn','Rules')}<button data-mobile-command="pause">${paused?'Resume':'Pause'}</button></div>${control('replay','Replay a turn',[['live','Live board'],[0,'Starting position'],...state.history.map((m,i)=>[i+1,`${i+1}. ${NAMES[m.side]} · ${m.placements.length?m.placements.length+' pieces':'Pass'}`])],replay<0?'live':replay)}<div class="dock-actions">${mobileAction('replayLive','Return to live')}${mobileAction('resignBtn','Resign')}</div><small class="dock-note">Local play · saves stay on this device</small>`;
  }
@@ -161,6 +162,7 @@ $('mobilePanel').onchange=e=>{
  case'axis':board.axis=+value;$('axis').value=value;render();break;
  case'layer':setLayer(+value);break;
  case'free':board.free=el.checked;$('freePick').checked=board.free;saveView();board.draw();break;
+ case'dragconfirm':board.dragConfirm=el.checked;$('dragConfirmEnabled').checked=el.checked;clearDrag();saveView();render();break;
  case'gesture':board.panMode=value==='1';board.draw();break;
  case'background':board.background=value;$('background').value=value;saveView();board.draw();break;
  case'glow':case'fade':board[el.dataset.mobileControl]=el.checked;$(el.dataset.mobileControl==='glow'?'glow':'fadeLayers').checked=el.checked;saveView();board.draw();break;
@@ -168,3 +170,27 @@ $('mobilePanel').onchange=e=>{
  }
 };
 
+let activeDragPointer=null;
+function renderPlacementControls(){
+ $('dragConfirmEnabled').checked=board.dragConfirm;$('dragStoneHandle').parentElement.hidden=!board.dragConfirm;$('dragStoneHandle').disabled=!allowed()||state.phase!=='playing'||used()>=budget(state);
+ $('dragStoneLabel').textContent=piece==='tier'?`Drag tier ${tier}`:`Drag ${piece==='stone'?'stone':piece}`;$('dragStoneOrb').style.setProperty('--drag-color',piece==='obstacle'?'#ff667a':piece==='ghost'?'#a6b0c2':piece==='coin'?'#c7d1df':COLORS[current(state).side]);
+ $('placementConfirm').hidden=!board.dragConfirm||!draft.length||replay>=0;$('confirmPlacement').disabled=$('commit').disabled;
+}
+function clearDrag(){activeDragPointer=null;board.dragPreview=null;$('dragStoneHint').hidden=true;board.draw();}
+function dragCandidate(e,original=null){
+ const rect=$('cube').getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top,i=board.hit(x,y),old=original===null?null:draft.find(p=>p.i===original),p=old?{...old,i}:{i,kind:piece,...(piece==='tier'?{tier}: {})};
+ const candidate=old?draft.map(q=>q.i===original?p:q):[...draft,p];let valid=false,next=null,message='Drop on a grid point';
+ if(i>=0&&allowed()&&state.phase==='playing'){try{next=playTurn(state,candidate);valid=true;message=`${coord(i,state.config.size)} · drop, then tap to confirm`;}catch(error){message=error.message;}}
+ return {i,x,y,original,p,candidate,next,valid,message,color:p.kind==='obstacle'?'#ff667a':p.kind==='ghost'?'#a6b0c2':p.kind==='coin'?'#c7d1df':COLORS[current(state).side],tier:p.tier||0};
+}
+function moveDrag(e,original=null){const info=dragCandidate(e,original);board.dragPreview=info;$('dragStoneHint').hidden=false;$('dragStoneHint').textContent=info.message;board.draw();}
+function dropDrag(e,original=null){const info=dragCandidate(e,original);clearDrag();if(!info.valid){toast(info.message,true);return;}draft=info.candidate;draftState=info.next;const p=xyz(info.i,state.config.size);['X','Y','Z'].forEach((a,k)=>$('coord'+a).value=p[k]+1);render();toast('Preview placed. Tap a translucent stone to confirm, or drag it to try again.');}
+const dragHandle=$('dragStoneHandle');
+dragHandle.onpointerdown=e=>{if(dragHandle.disabled)return;e.preventDefault();activeDragPointer=e.pointerId;dragHandle.setPointerCapture(e.pointerId);moveDrag(e);};
+dragHandle.onpointermove=e=>{if(activeDragPointer===e.pointerId)moveDrag(e);};
+dragHandle.onpointerup=e=>{if(activeDragPointer===e.pointerId){dragHandle.releasePointerCapture(e.pointerId);dropDrag(e);}};
+dragHandle.onpointercancel=clearDrag;
+dragHandle.onclick=()=>toast('Drag this piece onto a point, or tap the board. Tap a preview stone to confirm.');
+board.onPreviewMove=moveDrag;board.onPreviewDrop=dropDrag;board.onPreviewCancel=clearDrag;
+$('confirmPlacement').onclick=()=>$('commit').click();$('cancelPlacement').onclick=()=>$('cancelDraft').click();
+$('dragConfirmEnabled').onchange=e=>{board.dragConfirm=e.target.checked;clearDrag();saveView();render();};

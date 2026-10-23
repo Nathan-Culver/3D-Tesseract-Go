@@ -71,3 +71,7 @@ Undo checkpoints retain the last 21 in-memory positions. Full replay uses the sa
 ## Mobile cube toolbar
 
 On phones, Play, Layers, View, and Game tabs open small collapsible panels inside the cube view. They provide stone selection, turn actions, all-layer placement, axis/layer dropdowns in slice mode, one-finger Orbit/Pan selection, zoom, backgrounds, saves, replay, and rules. Tap the selected tab again or the close button to return to an unobstructed board.
+
+## Drag, drop, and tap confirmation
+
+Drag from the translucent piece handle, or tap a point to draft a piece. Drop it to preview the move. Tap a preview stone to confirm the whole turn, or drag that preview again to reposition it. Invalid drops keep the previous preview. This works in All XYZ, 3D slice, and 2D layer modes. Turn off **Drag, drop & tap to confirm** in View to retain ordinary selection plus the Place turn button. Omino confirms the complete drafted shape together.
