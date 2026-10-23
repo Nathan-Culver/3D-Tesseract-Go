@@ -6,7 +6,7 @@ A mobile-first, browser-based 3D cube Go game with a translucent neon blue cube,
 
 ## Play and controls
 
-Drag to orbit, shift-drag/right-drag to pan, and scroll or pinch to zoom. Select X, Y, or Z slices to reach interior intersections. Switch to **2D layer** for a flat view. Tap a point or use the precise X/Y/Z coordinates, draft a connected Omino shape, then choose **Place turn**. Nothing is committed until confirmed.
+Drag to orbit, shift-drag/right-drag to pan, and scroll or pinch to zoom. Select X, Y, or Z slices to reach interior intersections. Switch to **2D layer** for a flat view, or **All XYZ** to show every X, Y, and Z layer simultaneously with unfaded stones. Tap a point or use the precise X/Y/Z coordinates, draft a connected Omino shape, then choose **Place turn**. Nothing is committed until confirmed.
 
 - Board sizes: 9³, 13³, 17³, and 19³.
 - Easy, Normal, and Hard AI run in a browser worker; no AI servers, keys, or dependencies.
