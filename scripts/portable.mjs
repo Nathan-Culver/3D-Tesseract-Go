@@ -1,0 +1,15 @@
+import {readFile,writeFile} from 'node:fs/promises';
+const read=f=>readFile(new URL('../'+f,import.meta.url),'utf8');
+const uri=text=>'data:text/javascript;base64,'+Buffer.from(text).toString('base64');
+const engine=uri(await read('engine.mjs'));
+const board=uri((await read('board.mjs')).replace("'./engine.mjs'",JSON.stringify(engine)));
+const ai=uri((await read('ai.mjs')).replace("'./engine.mjs'",JSON.stringify(engine)));
+const workerSource=(await read('ai-worker.mjs')).replace("'./ai.mjs'",JSON.stringify(ai));
+const storage=uri((await read('storage.mjs')).replace("'./engine.mjs'",JSON.stringify(engine)));
+let app=await read('app.mjs');app=app.replace("'./engine.mjs'",JSON.stringify(engine)).replace("'./board.mjs'",JSON.stringify(board)).replace("'./storage.mjs'",JSON.stringify(storage));
+app=app.replace("new URL('./ai-worker.mjs',import.meta.url)",`URL.createObjectURL(new Blob([${JSON.stringify(workerSource)}],{type:'text/javascript'}))`);
+app=app.replace("if('serviceWorker' in navigator)","if(location.protocol==='http:'||location.protocol==='https:')");
+app+="\nif(location.protocol==='file:'||location.protocol==='data:')document.getElementById('offlineStatus').innerHTML='<i></i> Portable offline edition';\n";
+let html=await read('index.html');html=html.replace('<link rel="stylesheet" href="./style.css">',`<style>${await read('style.css')}</style>`).replace('<link rel="manifest" href="./manifest.webmanifest">','').replace('href="./icon.svg"',`href="data:image/svg+xml;base64,${Buffer.from(await read('icon.svg')).toString('base64')}"`).replace('<script type="module" src="./app.mjs"></script>',`<script type="module">${app.replaceAll('</script','<\\/script')}</script>`);
+await writeFile(new URL('../../3D-Tesseract-Go.html',import.meta.url),html);
+console.log('Created self-contained offline HTML edition.');
