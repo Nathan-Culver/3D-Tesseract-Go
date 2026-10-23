@@ -6,7 +6,7 @@ A mobile-first, browser-based 3D cube Go game with a translucent neon blue cube,
 
 ## Play and controls
 
-Drag to orbit, shift-drag/right-drag to pan, and scroll or pinch to zoom. Select X, Y, or Z slices to reach interior intersections. Switch to **2D layer** for a flat view, or **All XYZ** to show every X, Y, and Z layer simultaneously with unfaded stones. Tap a point or use the precise X/Y/Z coordinates, draft a connected Omino shape, then choose **Place turn**. Nothing is committed until confirmed.
+Drag to orbit, shift-drag/right-drag to pan, and scroll or pinch to zoom. Select X, Y, or Z slices to reach interior intersections. Switch to **2D layer** for a flat view, or **All XYZ** to show every X, Y, and Z layer simultaneously with unfaded stones. All XYZ allows placement at any point in the cube and hides the slice selector. Tap a point or use the precise X/Y/Z coordinates, draft a connected Omino shape, then choose **Place turn**. Nothing is committed until confirmed.
 
 - Board sizes: 9³, 13³, 17³, and 19³.
 - Easy, Normal, and Hard AI run in a browser worker; no AI servers, keys, or dependencies.
@@ -67,3 +67,7 @@ The root contains directly hostable static files and `.nojekyll`. GitHub Pages c
 Online multiplayer is deliberately deferred. FFA and Rengo currently mean local same-device play. AI strength is heuristic search, with extra opponent-response search on Hard, rather than a trained professional Go engine. Its performance depends on board complexity and device speed. Hard can take several seconds; Pause stops its worker.
 
 Undo checkpoints retain the last 21 in-memory positions. Full replay uses the saved move history. Clocks in historical replay are not reconstructed per move. Resignation or timeout ends the current local session; FFA elimination-with-continuation is not implemented.
+
+## Mobile cube toolbar
+
+On phones, Play, Layers, View, and Game tabs open small collapsible panels inside the cube view. They provide stone selection, turn actions, all-layer placement, axis/layer dropdowns in slice mode, one-finger Orbit/Pan selection, zoom, backgrounds, saves, replay, and rules. Tap the selected tab again or the close button to return to an unobstructed board.

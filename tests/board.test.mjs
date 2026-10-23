@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {CubeBoard} from '../board.mjs';import {newGame,index} from '../engine.mjs';
+function view(allLayers,size=9){globalThis.innerWidth=1200;const ctx=new Proxy({createRadialGradient:()=>({addColorStop(){}})},{get:(o,k)=>k in o?o[k]:(()=>{}),set:(o,k,v)=>(o[k]=v,true)});return Object.assign(Object.create(CubeBoard.prototype),{ctx,state:newGame({size}),w:800,h:600,axis:2,layer:4,flat:false,allLayers,free:false,opacity:.3,glow:false,background:'#070b12',selected:[],dead:new Set(),territory:null,yaw:.67,pitch:-.35,zoom:1,pan:[0,0],hover:-1});}
+test('All XYZ exposes every point for placement, including points outside the slice',()=>{const board=view(true);board.draw();const i=index(2,3,6,9),p=board.point(i);assert.equal(board.hits.length,729);assert.equal(board.hit(p.x,p.y),i);});
+test('slice mode restricts point selection to the selected plane',()=>{const board=view(false);board.draw();assert.equal(board.hits.length,81);assert(board.hits.every(p=>Math.floor(p.i/81)===4));});
+test('All XYZ exposes all 6859 points of the largest cube',()=>{const board=view(true,19);board.draw();assert.equal(board.hits.length,6859);});
