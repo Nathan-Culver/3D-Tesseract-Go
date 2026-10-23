@@ -1,12 +1,12 @@
 import {COLORS,owner,tierOf,ghost,xyz,index} from './engine.mjs';
 export class CubeBoard{
  constructor(canvas,onSelect){
-  this.canvas=canvas;this.ctx=canvas.getContext('2d');this.onSelect=onSelect;this.axis=2;this.layer=4;this.flat=false;this.allLayers=false;this.free=false;this.fade=true;this.opacity=.3;this.glow=true;this.background='#070b12';this.selected=[];this.dead=new Set();this.territory=null;this.yaw=.67;this.pitch=-.35;this.zoom=1;this.pan=[0,0];this.pointers=new Map();this.hover=-1;this.dirty=true;
+  this.canvas=canvas;this.ctx=canvas.getContext('2d');this.onSelect=onSelect;this.axis=2;this.layer=4;this.flat=false;this.panMode=false;this.allLayers=false;this.free=false;this.fade=true;this.opacity=.3;this.glow=true;this.background='#070b12';this.selected=[];this.dead=new Set();this.territory=null;this.yaw=.67;this.pitch=-.35;this.zoom=1;this.pan=[0,0];this.pointers=new Map();this.hover=-1;this.dirty=true;
   new ResizeObserver(()=>this.resize()).observe(canvas);canvas.addEventListener('contextmenu',e=>e.preventDefault());
   canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);this.pointers.set(e.pointerId,[e.clientX,e.clientY]);this.origin=[e.clientX,e.clientY];this.moved=false;});
   canvas.addEventListener('pointermove',e=>{if(!this.pointers.has(e.pointerId)){const r=canvas.getBoundingClientRect();this.hover=this.hit(e.clientX-r.left,e.clientY-r.top);this.draw();return;}const prev=this.pointers.get(e.pointerId),dx=e.clientX-prev[0],dy=e.clientY-prev[1];if(Math.hypot(e.clientX-this.origin[0],e.clientY-this.origin[1])>5)this.moved=true;
    if(this.pointers.size===2){const other=[...this.pointers].find(([id])=>id!==e.pointerId)[1];const old=Math.hypot(prev[0]-other[0],prev[1]-other[1]),now=Math.hypot(e.clientX-other[0],e.clientY-other[1]);this.zoom=Math.max(.45,Math.min(2.4,this.zoom*(now/(old||now))));this.pan[0]+=dx/2;this.pan[1]+=dy/2;this.moved=true;}
-   else if(this.moved){if(e.shiftKey||e.buttons===2||this.flat){this.pan[0]+=dx;this.pan[1]+=dy;}else{this.yaw+=dx*.008;this.pitch=Math.max(-1.45,Math.min(1.45,this.pitch+dy*.008));}}
+   else if(this.moved){if(e.shiftKey||e.buttons===2||this.flat||this.panMode){this.pan[0]+=dx;this.pan[1]+=dy;}else{this.yaw+=dx*.008;this.pitch=Math.max(-1.45,Math.min(1.45,this.pitch+dy*.008));}}
    this.pointers.set(e.pointerId,[e.clientX,e.clientY]);this.draw();
   });
   canvas.addEventListener('pointerup',e=>{if(e.button===0&&!this.moved&&this.pointers.size===1){const r=canvas.getBoundingClientRect(),i=this.hit(e.clientX-r.left,e.clientY-r.top);if(i>=0)this.onSelect(i);}this.pointers.delete(e.pointerId);});
@@ -20,7 +20,7 @@ export class CubeBoard{
  zoomBy(v){this.zoom=Math.max(.45,Math.min(2.4,this.zoom*v));this.draw();}
  project(x,y,z){
   let a,b,c;if(this.flat){const p=[x,y,z],axes=[0,1,2].filter(v=>v!==this.axis);a=p[axes[0]];b=p[axes[1]];c=0;}else{const cy=Math.cos(this.yaw),sy=Math.sin(this.yaw),cp=Math.cos(this.pitch),sp=Math.sin(this.pitch);a=x*cy+z*sy;c=-x*sy+z*cy;b=y*cp-c*sp;c=y*sp+c*cp;}
-  const f=Math.min(this.w*(this.flat?.4:.32),this.h*(this.flat?.35:.275))*this.zoom/(1+c/5);return {x:this.w/2+this.pan[0]+a*f,y:this.h/2+this.pan[1]-b*f,z:c,f};
+  const h=this.h-(innerWidth<=760?62:0),f=Math.min(this.w*(this.flat?.4:.32),h*(this.flat?.35:.275))*this.zoom/(1+c/5);return {x:this.w/2+this.pan[0]+a*f,y:h/2+this.pan[1]-b*f,z:c,f};
  }
  point(i){const n=this.state.config.size,p=xyz(i,n).map(v=>2*v/(n-1)-1);return this.project(...p);}
  hit(x,y){let best=-1,dist=Infinity;for(const p of this.hits||[]){const d=Math.hypot(p.x-x,p.y-y);if(d<Math.max(9,Math.min(21,p.step*.43))&&d<dist){dist=d;best=p.i;}}return best;}

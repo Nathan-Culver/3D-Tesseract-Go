@@ -3,7 +3,7 @@ import {createClocks,consumeClock,finishClock,formatClock} from './clock.mjs';
 import {CubeBoard} from './board.mjs';
 import * as storage from './storage.mjs';
 const $=id=>document.getElementById(id), form=$('setupForm');
-let state=newGame(),clocks,paused=false,aiPaused=false,worker=null,workerId=0,busy=false,hinting=false,draft=[],draftState=null,snapshots=[],replay=-1,dead=new Set(),piece='stone',tier=1,lastTick=performance.now(),saveQueue=Promise.resolve(),toastTimer,confirmAction;
+let state=newGame(),clocks,paused=false,aiPaused=false,worker=null,workerId=0,busy=false,hinting=false,draft=[],draftState=null,snapshots=[],replay=-1,dead=new Set(),piece='stone',tier=1,lastTick=performance.now(),saveQueue=Promise.resolve(),toastTimer,confirmAction,mobilePanel=null;
 state.startBoard=state.board.slice();
 const board=new CubeBoard($('cube'),selectPoint);
 function freshClocks(s){return createClocks(s.config,sides(s.config));}clocks=freshClocks(state);
@@ -60,7 +60,7 @@ function render(){
  $('draftList').innerHTML='';if(!draft.length)$('draftList').innerHTML='<span>No stones selected</span><small>The next move is yours.</small>';else draft.forEach((p,k)=>{const row=document.createElement('div');row.className='draft-item';row.innerHTML=`<span>${k+1}. ${coord(p.i,c.size)} · ${p.kind}${p.tier?` ${p.tier}`:''}</span><button aria-label="Remove selection ${k+1}">×</button>`;row.querySelector('button').onclick=()=>{draft=draft.slice(0,k);draftState=draft.length?playTurn(state,draft):null;render();};$('draftList').append(row);});
  $('previewChip').hidden=!draft.length;$('previewChip').textContent=`${draft.length} selected · ${used()} uses · ${(draftState?.captures[side]||0)-s.captures[side]} captures`;
  $('boardTip').textContent=s.phase==='scoring'?'Tap groups to mark dead · Review score to finish':replay>=0?'Replay view · return to Live to continue':board.flat?'Tap a point · Drag to pan · Pinch to zoom':'Drag to orbit · Shift-drag to pan · Scroll or pinch to zoom';
- if(replay<0)board.set(activeState(),draft,dead);renderMoves();
+ if(replay<0)board.set(activeState(),draft,dead);renderMoves();renderMobile();
 }
 function renderMoves(){
  $('replayLabel').textContent=replay<0?'Live':`${replay} / ${state.ply}`;const list=$('moveList');list.innerHTML='';if(!state.history.length){list.innerHTML='<li class="muted">Your first move starts the story.</li>';return;}
@@ -129,4 +129,42 @@ document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA'].include
 setupFields();render();
 (async()=>{try{const view=await storage.get('view');if(view){Object.assign(board,view);$('allLayersToggle').checked=!!view.allLayers;$('background').value=view.background;$('gridOpacity').value=view.opacity*100;$('fadeLayers').checked=view.fade;$('freePick').checked=view.free;$('glow').checked=view.glow;}const latest=await storage.get('autosave-latest');if(latest){restore(latest);toast('Restored your latest automatic checkpoint.');}else remember();}catch{remember();}render();maybeAI();})();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'}).then(async registration=>{await navigator.serviceWorker.ready;$('offlineStatus').innerHTML='<i></i> Ready for offline play';registration.addEventListener('updatefound',()=>{const w=registration.installing;w?.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)toast('An update is ready. Export your game, then reload to update.');});});}).catch(()=>{$('offlineStatus').innerHTML='<i></i> Local play · cache unavailable';});
+
+// Compact touch controls live inside the cube on narrow screens.
+function mobileAction(id,label){const source=$(id);return `<button data-mobile-action="${id}" ${source?.disabled?'disabled':''}>${label}</button>`;}
+function renderMobile(){
+ const panel=$('mobilePanel');if(!panel)return;panel.hidden=!mobilePanel;$('mobileCollapse').hidden=!mobilePanel;
+ for(const tab of document.querySelectorAll('[data-mobile-panel]')){const selected=tab.dataset.mobilePanel===mobilePanel;tab.setAttribute('aria-selected',selected);tab.classList.toggle('active',selected);if(selected)panel.setAttribute('aria-labelledby',tab.id);}
+ if(!mobilePanel)return;
+ const c=state.config,n=c.size,options=(values,selected)=>values.map(([value,label])=>`<option value="${value}" ${String(value)===String(selected)?'selected':''}>${label}</option>`).join('');
+ const control=(name,label,values,selected)=>`<label>${label}<select data-mobile-control="${name}">${options(values,selected)}</select></label>`;
+ if(mobilePanel==='play'){
+  const pieces=[['stone','Regular · 1 use']];if(c.ghost)pieces.push(['ghost','Ghost · 1 use']);if(c.obstacle)pieces.push(['obstacle','Obstacle · 1 use']);if(c.tier)for(let t=1;t<=3;t++)pieces.push(['tier'+t,`Tier ${t} · ${t+1} uses`]);if(c.coin)pieces.push(['coin','Coin · 1 use']);
+  panel.innerHTML=`<div class="dock-heading"><strong>${$('turnText').textContent}</strong><small>${$('turnBudget').textContent}</small></div>${control('piece','Place a piece',pieces,piece==='tier'?'tier'+tier:piece)}<div class="dock-actions">${mobileAction('commit',state.phase==='scoring'?'Review score':`Place ${draft.length||''} ${draft.length>1?'stones':'stone'}`)}${mobileAction('cancelDraft','Clear')}${mobileAction('passBtn','Pass')}${mobileAction('undoBtn','Undo')}${mobileAction('hintBtn','Hint')}${mobileAction('estimateBtn','Estimate')}</div>`;
+ }else if(mobilePanel==='layers'){
+  panel.innerHTML=`<div class="dock-grid">${control('axis','Slice axis',[[0,'X'],[1,'Y'],[2,'Z']],board.axis)}${control('layer','Layer',Array.from({length:n},(_,i)=>[i,`${i+1} of ${n}`]),board.layer)}</div><div class="dock-actions"><button data-mobile-command="3d" class="${!board.flat&&!board.allLayers?'active':''}">3D slice</button><button data-mobile-command="2d" class="${board.flat?'active':''}">2D layer</button><button data-mobile-command="all" class="${board.allLayers?'active':''}" aria-pressed="${board.allLayers}">All XYZ</button></div><label class="dock-check"><input type="checkbox" data-mobile-control="free" ${board.free?'checked':''}> Select across all layers</label><details><summary>Precise X / Y / Z placement</summary><div class="dock-coords">${['X','Y','Z'].map(a=>`<label>${a}<input id="mobileCoord${a}" aria-label="${a} coordinate" type="number" min="1" max="${n}" value="${$('coord'+a).value}"></label>`).join('')}<button data-mobile-command="coordinate" aria-label="Add precise coordinate">＋</button></div></details>`;
+ }else if(mobilePanel==='view'){
+  panel.innerHTML=`${control('gesture','One-finger drag',[[0,'Orbit the cube'],[1,'Pan / move the cube']],board.panMode?1:0)}<div class="dock-actions">${mobileAction('zoomOut','− Zoom')}${mobileAction('zoomIn','＋ Zoom')}${mobileAction('resetView','Reset view')}</div>${control('background','Background',[['#070b12','Black'],['#ffffff','White'],['#f9d9e6','Pink'],['#b5b6be','Grey'],['#46332b','Brown']],board.background)}<label class="dock-check"><input type="checkbox" data-mobile-control="glow" ${board.glow?'checked':''}> Neon glow</label><label class="dock-check"><input type="checkbox" data-mobile-control="fade" ${board.fade?'checked':''}> Fade other layers</label>`;
+ }else{
+  panel.innerHTML=`<div class="dock-actions">${mobileAction('savesBtn','Save / load')}${mobileAction('newBtn','New game')}${mobileAction('helpBtn','Rules')}<button data-mobile-command="pause">${paused?'Resume':'Pause'}</button></div>${control('replay','Replay a turn',[['live','Live board'],[0,'Starting position'],...state.history.map((m,i)=>[i+1,`${i+1}. ${NAMES[m.side]} · ${m.placements.length?m.placements.length+' pieces':'Pass'}`])],replay<0?'live':replay)}<div class="dock-actions">${mobileAction('replayLive','Return to live')}${mobileAction('resignBtn','Resign')}</div><small class="dock-note">Local play · saves stay on this device</small>`;
+ }
+}
+for(const tab of document.querySelectorAll('[data-mobile-panel]'))tab.onclick=()=>{mobilePanel=mobilePanel===tab.dataset.mobilePanel?null:tab.dataset.mobilePanel;renderMobile();};
+$('mobileCollapse').onclick=()=>{mobilePanel=null;renderMobile();};
+$('mobilePanel').onclick=e=>{
+ const b=e.target.closest('button');if(!b)return;if(b.dataset.mobileAction){$(b.dataset.mobileAction)?.click();renderMobile();return;}
+ switch(b.dataset.mobileCommand){case'3d':view(false);break;case'2d':view(true);break;case'all':allLayers(!board.allLayers);break;case'pause':$('pauseClock').click();break;case'coordinate':for(const a of ['X','Y','Z'])$('coord'+a).value=$('mobileCoord'+a).value;$('addCoord').click();break;}
+};
+$('mobilePanel').onchange=e=>{
+ const el=e.target,value=el.value;switch(el.dataset.mobileControl){
+ case'piece':if(value.startsWith('tier')){piece='tier';tier=+value.at(-1);}else piece=value;render();break;
+ case'axis':board.axis=+value;$('axis').value=value;render();break;
+ case'layer':setLayer(+value);break;
+ case'free':board.free=el.checked;$('freePick').checked=board.free;saveView();board.draw();break;
+ case'gesture':board.panMode=value==='1';board.draw();break;
+ case'background':board.background=value;$('background').value=value;saveView();board.draw();break;
+ case'glow':case'fade':board[el.dataset.mobileControl]=el.checked;$(el.dataset.mobileControl==='glow'?'glow':'fadeLayers').checked=el.checked;saveView();board.draw();break;
+ case'replay':if(value==='live')$('replayLive').click();else showReplay(+value);break;
+ }
+};
 
