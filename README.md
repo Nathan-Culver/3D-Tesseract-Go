@@ -1,4 +1,4 @@
-# 3D Tesseract Go
+# Tesseract Go
 
 A mobile-first, browser-based 3D cube Go game with a translucent neon blue cube, luminous stones, and entirely local computer opponents.
 
@@ -47,7 +47,7 @@ Open the printed local URL. For a separate, self-contained HTML edition:
 node scripts/portable.mjs
 ```
 
-This writes `../3D-Tesseract-Go.html`, with renderer, rules, AI, and styles embedded. Open it directly in a modern browser. File-origin save/worker support varies by browser; the hosted edition is recommended for mobile installation and predictable storage.
+This writes `../Tesseract-Go.html`, with renderer, rules, AI, and styles embedded. Open it directly in a modern browser. File-origin save/worker support varies by browser; the hosted edition is recommended for mobile installation and predictable storage.
 
 ## Verify
 

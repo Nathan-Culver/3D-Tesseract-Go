@@ -12,5 +12,5 @@ app=app.replace("new URL('./ai-worker.mjs',import.meta.url)",`URL.createObjectUR
 app=app.replace("if('serviceWorker' in navigator)","if(location.protocol==='http:'||location.protocol==='https:')");
 app+="\nif(location.protocol==='file:'||location.protocol==='data:')document.getElementById('offlineStatus').innerHTML='<i></i> Portable offline edition';\n";
 let html=await read('index.html');html=html.replace('<link rel="stylesheet" href="./style.css">',`<style>${await read('style.css')}</style>`).replace('<link rel="manifest" href="./manifest.webmanifest">','').replace('href="./icon.svg"',`href="data:image/svg+xml;base64,${Buffer.from(await read('icon.svg')).toString('base64')}"`).replace('<script type="module" src="./app.mjs"></script>',`<script type="module">${app.replaceAll('</script','<\\/script')}</script>`);
-await writeFile(new URL('../../3D-Tesseract-Go.html',import.meta.url),html);
+await writeFile(new URL('../../Tesseract-Go.html',import.meta.url),html);
 console.log('Created self-contained offline HTML edition.');

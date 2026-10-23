@@ -20,7 +20,7 @@ export class CubeBoard{
  zoomBy(v){this.zoom=Math.max(.45,Math.min(2.4,this.zoom*v));this.draw();}
  project(x,y,z){
   let a,b,c;if(this.flat){const p=[x,y,z],axes=[0,1,2].filter(v=>v!==this.axis);a=p[axes[0]];b=p[axes[1]];c=0;}else{const cy=Math.cos(this.yaw),sy=Math.sin(this.yaw),cp=Math.cos(this.pitch),sp=Math.sin(this.pitch);a=x*cy+z*sy;c=-x*sy+z*cy;b=y*cp-c*sp;c=y*sp+c*cp;}
-  const f=Math.min(this.w*.4,this.h*.35)*this.zoom/(1+c/5);return {x:this.w/2+this.pan[0]+a*f,y:this.h/2+this.pan[1]-b*f,z:c,f};
+  const f=Math.min(this.w*(this.flat?.4:.32),this.h*(this.flat?.35:.275))*this.zoom/(1+c/5);return {x:this.w/2+this.pan[0]+a*f,y:this.h/2+this.pan[1]-b*f,z:c,f};
  }
  point(i){const n=this.state.config.size,p=xyz(i,n).map(v=>2*v/(n-1)-1);return this.project(...p);}
  hit(x,y){let best=-1,dist=Infinity;for(const p of this.hits||[]){const d=Math.hypot(p.x-x,p.y-y);if(d<Math.max(9,Math.min(21,p.step*.43))&&d<dist){dist=d;best=p.i;}}return best;}
