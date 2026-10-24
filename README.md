@@ -14,6 +14,7 @@ Drag to orbit, shift-drag/right-drag to pan, and scroll or pinch to zoom. Select
 - Omino, Borderless, Ghost, Obstacle, and Tier Stones enabled by default. Diagonals default to all 26 neighbors; disable for six face neighbors.
 - Optional First Capture, Stoical, and Coin Go, including dime-style or silver pieces.
 - Counting, Territory, Capture Only, and Stones Only scoring; configurable komi when Omino is off.
+- Optional 25, 50, 75, or 100 point win target (off by default), checked after each side’s completed turn or pass using its selected scoring total. Rengo uses the shared team score. First Capture takes priority. Current territory counts immediately, so Counting/Territory may reach a target on the opening move; Stones Only/Capture Only avoid that effect. Targets persist in saves.
 - Untimed, fixed total time, increment, or overtime periods; freely placed handicap stones per player/seat.
 - Undo, replay, hints, score estimates, and dead-group review.
 - Black, white, pink, grey, and brown board backgrounds.

@@ -1,5 +1,5 @@
 // Pure deterministic game rules. No DOM, network, or external dependencies.
-export const DEFAULTS={size:9,diagonals:true,omino:true,borderless:true,ghost:true,obstacle:true,tier:true,coin:false,stoical:false,firstCapture:false,scoring:'counting',komi:0,mode:'ai',difficulty:'normal',human:1,players:2,teams:2,schedule:'interleaved',clock:'none',minutes:15,increment:5,periods:5,periodSeconds:30,handicaps:[0,0],coinCount:0,coinStyle:'silver'};
+export const DEFAULTS={size:9,diagonals:true,omino:true,borderless:true,ghost:true,obstacle:true,tier:true,coin:false,stoical:false,firstCapture:false,scoring:'counting',winTarget:0,komi:0,mode:'ai',difficulty:'normal',human:1,players:2,teams:2,schedule:'interleaved',clock:'none',minutes:15,increment:5,periods:5,periodSeconds:30,handicaps:[0,0],coinCount:0,coinStyle:'silver'};
 export const COLORS=['','#b58aff','#f4f7ff','#ffe36c','#72f5ad','#60a5ff','#5ce6e6','#ffad68','#f37fce'];
 export const NAMES=['','Black','White','Yellow','Green','Blue','Cyan','Orange','Magenta'];
 export const physical=c=>c>=10&&c<90;
@@ -25,6 +25,7 @@ export function turnOrder(c){
 }
 export function normalize(input={}){
  const c={...DEFAULTS,...input};if(![3,5,9,13,17,19].includes(+c.size))throw Error('Choose a 3, 5, 9, 13, 17, or 19 cube.');c.size=+c.size;
+ c.winTarget=+c.winTarget;if(![0,25,50,75,100].includes(c.winTarget))throw Error('Choose no score target, 25, 50, 75, or 100 points.');
  if(!['ai','local','ffa','rengo'].includes(c.mode))throw Error('Unknown game mode.');
  if(!['easy','normal','hard'].includes(c.difficulty))throw Error('Unknown AI difficulty.');
  if(!['interleaved','blocks'].includes(c.schedule))throw Error('Unknown team order.');
@@ -82,7 +83,7 @@ export function playTurn(s,placements){
  const next={...draft,captures:s.captures.slice(),ply:s.ply+1,turn:(s.turn+1)%s.order.length,passes:0,previousCapture:allCaptured.length};next.captures[color]+=allCaptured.length;
  const key=positionKey(next);if(s.seen.includes(key))throw Error('Repetition: this move would recreate an earlier position and turn.');
  next.seen=[...s.seen,key];next.history=[...s.history,{side:color,seat:current(s).seat,placements:placements.map(p=>({...p})),captured:allCaptured,used}];
- if(s.config.firstCapture&&allCaptured.length){next.phase='ended';next.result={winner:color,reason:'First capture'};}return next;
+ if(s.config.firstCapture&&allCaptured.length){next.phase='ended';next.result={winner:color,reason:'First capture'};}else finishScoreTarget(next,color);return next;
 }
 export function placeHandicap(s,i){
  if(s.phase!=='handicap'||!Number.isInteger(i)||i<0||i>=s.board.length||s.board[i])throw Error('Place a handicap stone on an empty point.');
@@ -91,7 +92,12 @@ export function placeHandicap(s,i){
 }
 export function pass(s){
  if(s.phase!=='playing')throw Error('Finish setup before passing.');const next={...s,turn:(s.turn+1)%s.order.length,ply:s.ply+1,passes:s.passes+1,previousCapture:0,history:[...s.history,{side:current(s).side,seat:current(s).seat,placements:[],captured:[],used:0}]};
- if(next.passes>=s.order.length)next.phase='scoring';return next;
+ if(next.passes>=s.order.length)next.phase='scoring';finishScoreTarget(next,current(s).side);return next;
+}
+function finishScoreTarget(s,color){
+ if(!s.config.winTarget)return;
+ const result=score(s),total=result.points[color].total;
+ if(total>=s.config.winTarget){s.phase='ended';s.result={winner:color,reason:`Reached ${s.config.winTarget}-point target (${total} points)`,points:result.points};}
 }
 export function score(s,dead=[]){
  const board=s.board.slice(),count=sides(s.config),points=Array.from({length:count+1},()=>({stones:0,territory:0,captures:0,komi:0,total:0}));

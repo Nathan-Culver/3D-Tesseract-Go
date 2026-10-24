@@ -1,4 +1,4 @@
-const VERSION='tesseract-go-v1.0.10';
+const VERSION='tesseract-go-v1.0.11';
 const FILES=['./','./index.html','./style.css','./app.mjs','./engine.mjs','./board.mjs','./clock.mjs','./ai.mjs','./ai-worker.mjs','./storage.mjs','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(VERSION).then(c=>c.addAll(FILES.map(file=>new Request(file,{cache:'reload'})))).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('tesseract-go-')&&k!==VERSION).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
