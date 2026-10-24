@@ -4,3 +4,5 @@ function view(allLayers,size=9){globalThis.innerWidth=1200;const ctx=new Proxy({
 test('All XYZ exposes every point for placement, including points outside the slice',()=>{const board=view(true);board.draw();const i=index(2,3,6,9),p=board.point(i);assert.equal(board.hits.length,729);assert.equal(board.hit(p.x,p.y),i);});
 test('slice mode restricts point selection to the selected plane',()=>{const board=view(false);board.draw();assert.equal(board.hits.length,81);assert(board.hits.every(p=>Math.floor(p.i/81)===4));});
 test('All XYZ exposes all 6859 points of the largest cube',()=>{const board=view(true,19);board.draw();assert.equal(board.hits.length,6859);});
+
+test('small cubes expose their full volume and correctly clamp the active layer',()=>{for(const size of [3,5]){const board=view(true,size);board.set(newGame({size}));assert(board.layer<size);assert.equal(board.hits.length,size**3);board.allLayers=false;board.draw();assert.equal(board.hits.length,size**2);}});

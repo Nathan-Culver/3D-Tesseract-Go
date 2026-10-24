@@ -4,7 +4,7 @@ import {newGame,neighborhood,index,physical,owner,group,playTurn,pass,placeHandi
 import {chooseMove} from '../ai.mjs';
 const simple=()=>newGame({omino:false,diagonals:false,borderless:false,mode:'local'});
 const save=state=>({format:'3D-Tesseract-Go',version:1,state});
-test('all four cube sizes contain their full 3D volume',()=>{for(const size of [9,13,17,19])assert.equal(newGame({size}).board.length,size**3);});
+test('all six cube sizes contain their full 3D volume',()=>{for(const size of [3,5,9,13,17,19])assert.equal(newGame({size}).board.length,size**3);});
 test('six neighbors without diagonals; 26 with diagonals',()=>{for(const diagonals of [false,true]){const s=newGame({diagonals});assert.equal(neighborhood(s.config)[index(4,4,4,9)].length,diagonals?26:6);}});
 test('bounded corner has three neighbors; wrapped corner has six',()=>{assert.equal(neighborhood(simple().config)[0].length,3);assert.equal(neighborhood(newGame({diagonals:false}).config)[0].length,6);});
 test('wrapped diagonal connects all opposite faces',()=>{const s=newGame();assert(neighborhood(s.config)[0].includes(index(8,8,8,9)));});
@@ -43,3 +43,7 @@ test('dead prisoners credit an entire group in two-player territory scoring',()=
 test('untrusted move records cannot inject markup into the move list',()=>{let s=playTurn(simple(),[{i:0}]);s.history[0].used='<img src=x onerror=alert(1)>';assert.throws(()=>validateSave(save(s)),/move record/);});
 
 test('repetition fingerprints are deterministic, compact, and sensitive to board and turn',()=>{const a=newGame({size:19}),b=structuredClone(a);assert.equal(positionKey(a),positionKey(b));assert(positionKey(a).length<50);b.board[6000]=10;assert.notEqual(positionKey(a),positionKey(b));b.board[6000]=0;b.turn=1;assert.notEqual(positionKey(a),positionKey(b));});
+
+test('small cubes support captures, save roundtrips, and legal AI turns',()=>{for(const size of [3,5]){let s=newGame({size,omino:false,diagonals:false,borderless:false,mode:'local'});s.board[0]=20;s.board[1]=s.board[size]=10;s=playTurn(s,[{i:size**2}]);assert.equal(s.board[0],0);assert.equal(s.captures[1],1);assert.deepEqual(validateSave(JSON.parse(JSON.stringify(save(s)))),s);for(const difficulty of ['easy','normal','hard']){const fresh=newGame({size,difficulty}),ps=chooseMove(fresh,{difficulty,timeMs:50});assert(ps.length);assert.equal(playTurn(fresh,ps).ply,1);}}});
+
+test('small wrapped cubes have unique adjacent points',()=>{for(const size of [3,5])for(const diagonals of [false,true])for(const neighbors of neighborhood(newGame({size,diagonals}).config)){assert.equal(neighbors.length,diagonals?26:6);assert.equal(new Set(neighbors).size,neighbors.length);}});

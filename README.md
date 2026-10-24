@@ -8,7 +8,7 @@ A mobile-first, browser-based 3D cube Go game with a translucent neon blue cube,
 
 Drag to orbit, shift-drag/right-drag to pan, and scroll or pinch to zoom. Select X, Y, or Z slices to reach interior intersections. Switch to **2D layer** for a flat view, or **All XYZ** to show every X, Y, and Z layer simultaneously with unfaded stones. All XYZ allows placement at any point in the cube and hides the slice selector. Tap a point or use the precise X/Y/Z coordinates, draft a connected Omino shape, then choose **Place turn**. Nothing is committed until confirmed.
 
-- Board sizes: 9³, 13³, 17³, and 19³.
+- Board sizes: 3³, 5³, 9³, 13³, 17³, and 19³.
 - Easy, Normal, and Hard AI run in a browser worker; no AI servers, keys, or dependencies.
 - Two-player pass-and-play, up to eight local FFA players, and Rengo teams with interleaved or team-block scheduling.
 - Omino, Borderless, Ghost, Obstacle, and Tier Stones enabled by default. Diagonals default to all 26 neighbors; disable for six face neighbors.

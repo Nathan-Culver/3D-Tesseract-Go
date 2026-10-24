@@ -24,7 +24,7 @@ export function turnOrder(c){
  if(c.schedule==='blocks')return teams.flat();const result=[];for(let k=0;k<Math.ceil(c.players/c.teams);k++)for(const t of teams)if(t[k])result.push(t[k]);return result;
 }
 export function normalize(input={}){
- const c={...DEFAULTS,...input};if(![9,13,17,19].includes(+c.size))throw Error('Choose a 9, 13, 17, or 19 cube.');c.size=+c.size;
+ const c={...DEFAULTS,...input};if(![3,5,9,13,17,19].includes(+c.size))throw Error('Choose a 3, 5, 9, 13, 17, or 19 cube.');c.size=+c.size;
  if(!['ai','local','ffa','rengo'].includes(c.mode))throw Error('Unknown game mode.');
  if(!['easy','normal','hard'].includes(c.difficulty))throw Error('Unknown AI difficulty.');
  if(!['interleaved','blocks'].includes(c.schedule))throw Error('Unknown team order.');
